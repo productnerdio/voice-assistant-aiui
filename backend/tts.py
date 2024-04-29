@@ -10,6 +10,11 @@ from elevenlabs import generate, save
 
 from util import delete_file
 
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 LANGUAGE = os.getenv("LANGUAGE", "en")
 TTS_PROVIDER = os.getenv("TTS_PROVIDER", "EDGETTS")
 

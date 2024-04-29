@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y ffmpeg
 
 COPY ./backend/requirements.txt /tmp/
 
-RUN pip install --no-cache-dir --upgrade -r /tmp/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /tmp/requirements.txt && \
+    pip install --no-cache-dir openai[datalib]
 
 COPY ./backend /app
 

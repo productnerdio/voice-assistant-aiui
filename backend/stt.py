@@ -9,6 +9,11 @@ import openai
 
 from util import delete_file
 
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 LANGUAGE = os.getenv("LANGUAGE", "en")
 
 

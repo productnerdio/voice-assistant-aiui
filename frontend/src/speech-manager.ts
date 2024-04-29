@@ -54,6 +54,8 @@ const sendData = (blob) => {
         .catch(handleError);
 };
 
+
+
 function base64Encode(str: string) {
     const encoder = new TextEncoder();
     const data = encoder.encode(str);
