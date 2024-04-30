@@ -3,9 +3,10 @@ import json
 import time
 import logging
 import asyncio
-import os  # Added to access environment variables
+import os
+import uuid  # For generating unique session IDs
 
-from fastapi import FastAPI, UploadFile, BackgroundTasks, Header, Depends, HTTPException, status
+from fastapi import FastAPI, UploadFile, BackgroundTasks, Cookie, Response, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -26,13 +27,18 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
+            headers={"WWW-Authenticate": "Basic"}
         )
     return credentials.username
 
 @app.post("/inference")
-async def infer(audio: UploadFile, background_tasks: BackgroundTasks, conversation: str = Header(default=None), username: str = Depends(get_current_username)):
-    logging.debug("Received request")
+async def infer(response: Response, audio: UploadFile, background_tasks: BackgroundTasks, session_id: str = Cookie(default=None), username: str = Depends(get_current_username)):
+    # Check if session_id is present, otherwise create and set it
+    if not session_id:
+        session_id = str(uuid.uuid4())
+        response.set_cookie(key="session_id", value=session_id, httponly=True, max_age=1800)  # Cookie expires in 30 minutes
+
+    logging.debug(f"Received request with session_id: {session_id}")
     start_time = time.time()
 
     # Perform transcription and AI processing concurrently
@@ -43,7 +49,7 @@ async def infer(audio: UploadFile, background_tasks: BackgroundTasks, conversati
         logging.error("Transcription failed or was empty")
         return JSONResponse(status_code=400, content={"message": "Could not transcribe audio"})
 
-    ai_response_task = asyncio.create_task(get_completion(user_prompt_text, conversation))
+    ai_response_task = asyncio.create_task(get_completion(user_prompt_text, session_id))
     ai_response_text = await ai_response_task
 
     # Parallel TTS processing
@@ -59,7 +65,7 @@ async def infer(audio: UploadFile, background_tasks: BackgroundTasks, conversati
     )
 
 @app.get("/")
-async def root(username: str = Depends(get_current_username)):
+async def root():
     return RedirectResponse(url="/index.html")
 
 app.mount("/", StaticFiles(directory="/app/frontend/dist"), name="static")

@@ -42,7 +42,7 @@ Always provide your responses in the language that corresponds to the ISO-639-1 
 FLOWISE_API_URL = os.getenv("FLOWISE_API_URL")
 FLOWISE_API_KEY = os.getenv("FLOWISE_API_KEY")
 
-async def get_completion(user_prompt, conversation_thus_far):
+async def get_completion(user_prompt, session_id):
     if _is_empty(user_prompt):
         logging.error("Empty user prompt received")
         raise ValueError("Empty user prompt received")
@@ -51,8 +51,13 @@ async def get_completion(user_prompt, conversation_thus_far):
 
     request_payload = {
         "question": user_prompt,
-        "messages": [{"role": "user", "content": user_prompt}]
+        "overrideConfig": {
+            "sessionId": session_id
+        }
     }
+
+    # Log the request payload right after it's defined
+    logging.info(f"Sending request to Flowise with payload: {request_payload}")
 
     headers = {"Authorization": f"Bearer {FLOWISE_API_KEY}"}
 
@@ -81,4 +86,3 @@ async def get_completion(user_prompt, conversation_thus_far):
 
 def _is_empty(user_prompt: str):
     return not user_prompt.strip()
-
