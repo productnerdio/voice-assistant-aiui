@@ -2,6 +2,8 @@ import base64
 import json
 import time
 import logging
+import asyncio
+
 
 from fastapi import FastAPI, UploadFile, BackgroundTasks, Header
 from fastapi.responses import FileResponse, JSONResponse
@@ -20,30 +22,29 @@ async def infer(audio: UploadFile, background_tasks: BackgroundTasks, conversati
     logging.debug("Received request")
     start_time = time.time()
 
-    # Step 1: Transcribe the audio
-    user_prompt_text = await transcribe(audio)
-    
-    # Step 2: Generate and send an interim response immediately
-    interim_response = "One moment, let me check that for you."
-    interim_response_audio_filepath = await to_speech(interim_response, background_tasks)
-    background_tasks.add_task(send_interim_response, interim_response_audio_filepath)
-    
-    
-    # Step 3: Process AI completion
-    ai_response_text = await get_completion(user_prompt_text, conversation)
-    
-    # Step 4: Convert AI response to speech
-    ai_response_audio_filepath = await to_speech(ai_response_text, background_tasks)
+    # Perform transcription and AI processing concurrently
+    transcription_task = asyncio.create_task(transcribe(audio))
+    user_prompt_text = await transcription_task
 
-    # Step 5: Log total processing time
+    if not user_prompt_text:
+        logging.error("Transcription failed or was empty")
+        return JSONResponse(status_code=400, content={"message": "Could not transcribe audio"})
+
+    ai_response_task = asyncio.create_task(get_completion(user_prompt_text, conversation))
+    ai_response_text = await ai_response_task
+
+    # Parallel TTS processing
+    tts_task = asyncio.create_task(to_speech(ai_response_text, background_tasks))
+    ai_response_audio_filepath = await tts_task
+
     logging.info(f'Total processing time: {time.time() - start_time} seconds')
-    
-    # Step 6: Return the final audio file response
+
     return FileResponse(
         path=ai_response_audio_filepath, 
         media_type="audio/mpeg",
         headers={"text": _construct_response_header(user_prompt_text, ai_response_text)}
     )
+
 
 @app.get("/")
 async def root():

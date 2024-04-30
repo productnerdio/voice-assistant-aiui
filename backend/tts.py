@@ -69,7 +69,7 @@ def _elevenlabs_to_speech(text, background_tasks):
         api_key=ELEVENLABS_API_KEY,
         text=text,
         voice=ELEVENLABS_VOICE,
-        model="eleven_monolingual_v1"
+        model="eleven_turbo_v2"
     )
 
     filepath = f"/tmp/{uuid.uuid4()}.mp3"
