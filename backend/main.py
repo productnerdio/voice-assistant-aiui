@@ -3,22 +3,35 @@ import json
 import time
 import logging
 import asyncio
+import os  # Added to access environment variables
 
-
-from fastapi import FastAPI, UploadFile, BackgroundTasks, Header
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, UploadFile, BackgroundTasks, Header, Depends, HTTPException, status
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from ai import get_completion
 from stt import transcribe
 from tts import to_speech
 
 app = FastAPI()
+security = HTTPBasic()  # HTTP Basic Auth setup
 logging.basicConfig(level=logging.INFO)
 
+# Authentication dependency
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = os.getenv("ASSISTANT_USERNAME", "default_user")
+    correct_password = os.getenv("ASSISTANT_PASSWORD", "default_pass")
+    if credentials.username != correct_username or credentials.password != correct_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
 @app.post("/inference")
-async def infer(audio: UploadFile, background_tasks: BackgroundTasks, conversation: str = Header(default=None)):
+async def infer(audio: UploadFile, background_tasks: BackgroundTasks, conversation: str = Header(default=None), username: str = Depends(get_current_username)):
     logging.debug("Received request")
     start_time = time.time()
 
@@ -40,14 +53,13 @@ async def infer(audio: UploadFile, background_tasks: BackgroundTasks, conversati
     logging.info(f'Total processing time: {time.time() - start_time} seconds')
 
     return FileResponse(
-        path=ai_response_audio_filepath, 
+        path=ai_response_audio_filepath,
         media_type="audio/mpeg",
         headers={"text": _construct_response_header(user_prompt_text, ai_response_text)}
     )
 
-
 @app.get("/")
-async def root():
+async def root(username: str = Depends(get_current_username)):
     return RedirectResponse(url="/index.html")
 
 app.mount("/", StaticFiles(directory="/app/frontend/dist"), name="static")
@@ -61,6 +73,5 @@ def _construct_response_header(user_prompt, ai_response):
     ).decode("utf-8")
 
 async def send_interim_response(interim_response_audio_filepath):
-    # This function could, for example, send the interim response file over WebSocket or another channel
-    # The specifics of this function will depend on your client-side handling
+    # Placeholder function for handling interim responses
     pass
