@@ -1,34 +1,38 @@
-import {useMicVADWrapper} from "./hooks/useMicVADWrapper";
-import RotateLoader from "react-spinners/RotateLoader";
-import {particleActions} from "./particle-manager.ts";
-import {useState} from "react";
-import Canvas from "./Canvas.tsx";
+import React, { useState } from 'react';
+import Canvas from './Canvas';
+import RotateLoader from 'react-spinners/RotateLoader';
+import { useMicVADWrapper } from './hooks/useMicVADWrapper';
+import { particleActions } from './particle-manager';
 
 const App = () => {
     const [loading, setLoading] = useState(true);
+    const [listening, setListening] = useState(false);
+    const toggleListening = () => setListening(!listening);
 
-    useMicVADWrapper(setLoading);
+    const micVAD = useMicVADWrapper(setLoading, listening);
 
-    if (loading) {
-        return (
-            <div style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100vh",
-                width: "100vw",
-            }}>
+    return (
+        <div className="app-container">
+            {loading ? (
                 <RotateLoader
                     loading={loading}
                     color={"#27eab6"}
                     aria-label="Loading Spinner"
                     data-testid="loader"
                 />
-            </div>
-        );
-    }
-
-    return <Canvas draw={particleActions.draw}/>
-}
+            ) : (
+                <>
+                    <Canvas draw={particleActions.draw} />
+                    <button 
+                        className={`listen-button ${listening ? 'listening' : ''}`}
+                        onClick={toggleListening}
+                    >
+                        {listening ? 'Stop Listening' : 'Start Listening'}
+                    </button>
+                </>
+            )}
+        </div>
+    );
+};
 
 export default App;

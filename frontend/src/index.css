@@ -1,3 +1,32 @@
 :root {
   background-color: #000000;
 }
+.app-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+}
+
+.listen-button {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  font-size: 1rem;
+  color: #fff;
+  background-color: #27eab6;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.3s; /* Smooth transition for background color change */
+}
+
+.listen-button.listening {
+  background-color: #ff4d4d; /* Red color when actively listening */
+}

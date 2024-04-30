@@ -2,7 +2,6 @@ import logging
 import os
 import httpx
 import time
-import openai
 
 from dotenv import load_dotenv
 
@@ -43,23 +42,22 @@ Always provide your responses in the language that corresponds to the ISO-639-1 
 FLOWISE_API_URL = os.getenv("FLOWISE_API_URL")
 FLOWISE_API_KEY = os.getenv("FLOWISE_API_KEY")
 
-
 async def get_completion(user_prompt, conversation_thus_far):
     if _is_empty(user_prompt):
+        logging.error("Empty user prompt received")
         raise ValueError("Empty user prompt received")
 
     start_time = time.time()
 
-    # Prepare the request payload
     request_payload = {
         "question": user_prompt,
         "messages": [{"role": "user", "content": user_prompt}]
     }
 
-    # Asynchronous HTTP request using httpx
+    headers = {"Authorization": f"Bearer {FLOWISE_API_KEY}"}
+
     async with httpx.AsyncClient() as client:
         try:
-            headers = {"Authorization": f"Bearer {FLOWISE_API_KEY}"}
             response = await client.post(FLOWISE_API_URL, json=request_payload, headers=headers, timeout=15.0)
             if response.status_code == 200:
                 result = response.json()
@@ -69,11 +67,18 @@ async def get_completion(user_prompt, conversation_thus_far):
                 logging.info(f"Flowise GPT bot response: {completion}")
                 return completion
             else:
-                logging.error(f"Error occurred while calling Flowise GPT bot: {response.text}")
-                raise Exception("Error calling Flowise GPT bot")
+                logging.error(f"Error occurred while calling Flowise GPT bot: HTTP Status {response.status_code}, Response: {response.text}")
+                raise Exception(f"Error calling Flowise GPT bot: HTTP Status {response.status_code}")
+        except httpx.HTTPStatusError as e:
+            logging.error(f"HTTP error occurred: {e}")
+            raise
         except httpx.RequestError as e:
-            logging.error(f"Network-related error when calling Flowise GPT bot: {e}")
-            raise Exception(f"Network-related error: {e}")
+            logging.error(f"Request error occurred: {e}")
+            raise
+        except Exception as e:
+            logging.error(f"An unexpected error occurred: {e}")
+            raise
 
 def _is_empty(user_prompt: str):
-    return not user_prompt or user_prompt.isspace()
+    return not user_prompt.strip()
+
